@@ -23,40 +23,28 @@ check_tor_enabled_do() {
       fi
    fi
 
-   local line file_name file_name_list i
-
    shopt -s globstar
    shopt -s nullglob
 
-   if [ -f /usr/share/tor/tor-service-defaults-torrc ]; then
-      file_name_list+="/usr/share/tor/tor-service-defaults-torrc"
-      file_name_list+=" "
-   fi
-   if [ -f /etc/tor/torrc ]; then
-      file_name_list+="/etc/tor/torrc"
-      file_name_list+=" "
-   fi
+   ## many function calls in this script are provided by torrc-parser
+   ## provides: get_tor_start_command
+   ## provides: and extra_specified_torrc
+   ## provides: value_of_disable_network
+   source /usr/lib/anon-shared-helper-scripts/torrc-parser
 
-   for i in /etc/torrc.d/* ; do
-      file_name_list+="$i"
-      file_name_list+=" "
-   done
+   ## sets: $tor_start_command
+   get_tor_start_command
 
-   for i in /usr/local/etc/torrc.d/* ; do
-      file_name_list+="$i"
-      file_name_list+=" "
-   done
+   ## extract default_torrc file and -f torrc file
+   ## sets: $default_torrc
+   ## sets: $f_torrc
+   extra_specified_torrc
 
-   for file_name in $file_name_list ; do
-      true "file_name: '$file_name'"
-      while read -r line || [ -n "$line" ]; do
-         if [ "$line" = "DisableNetwork 0" ]; then
-            TOR_ENABLED="1"
-         fi
-         if [ "$line" = "DisableNetwork 1" ]; then
-            TOR_ENABLED="0"
-         fi
-      done < "$file_name"
-      unset line
-   done
+   ## call parser() to parse torrc files, arguments order matters
+   ## $torrc_all_in_one is set by the call
+   parser "$default_torrc" "$f_torrc"
+
+   ## The $TOR_ENABLED is used by whonixcheck
+   ## sets: $TOR_ENABLED
+   value_of_disable_network
 }
